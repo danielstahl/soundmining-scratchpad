@@ -1,2 +1,2 @@
-# soundmining-scratchpad
-Scratchpad for trying out ideas
+# Soundmining Scratchpad 
+Scratchpad to try out musical ideas.
