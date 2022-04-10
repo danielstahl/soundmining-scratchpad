@@ -2,7 +2,7 @@ name := "soundmining-scratchpad"
 
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.13.6"
+scalaVersion := "2.13.8"
 
 libraryDependencies += "com.illposed.osc" % "javaosc-core" % "0.2"
 

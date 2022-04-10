@@ -18,6 +18,21 @@
 	'Supercollider loaded'.postln;
 };
 
+~findMidiDevice = {
+	arg srcID;
+	var device;
+	MIDIClient.sources.do({
+		arg item, i;
+		if(item.uid == srcID, {device = item});
+	});
+	device
+};
+
+~deviceName = {
+	arg device;
+	device.name ++ ":" ++ device.device
+};
+
 ~midiBootFunction = {
 	var on, off, cc, bend, midiReciever;
 
@@ -26,27 +41,42 @@
 	if(MIDIClient.sources.size > 0,
 	{
 		'Setting up midi'.postln;
+
 		midiReciever = NetAddr("localhost", 57111);
 
 		MIDIdef.noteOn(\noteOn, {
-			arg veloc, num, chan, src;
-			midiReciever.sendMsg("/noteOn", num, veloc);
+			arg veloc, num, chan, srcID;
+			var device, deviceName;
+			device = ~findMidiDevice.value(srcID);
+			deviceName = ~deviceName.value(device);
+			postf("note on % veloc % chan % device %\n", num, veloc, chan, deviceName);
+			midiReciever.sendMsg("/noteOn", num, veloc, deviceName);
 		});
 
 		MIDIdef.noteOff(\noteOff, {
-			arg veloc, num, chan, src;
-			midiReciever.sendMsg("/noteOff", num, veloc);
+			arg veloc, num, chan, srcID;
+			var device, deviceName;
+			device = ~findMidiDevice.value(srcID);
+			deviceName = ~deviceName.value(device);
+			midiReciever.sendMsg("/noteOff", num, veloc, deviceName);
 		});
 
 		MIDIdef.cc(\cc, {
 			// 1 = Modulation wheel
-			arg value, control, chan;
-			midiReciever.sendMsg("/cc", value, control);
+			arg value, control, chan, srcID;
+			var device, deviceName;
+			device = ~findMidiDevice.value(srcID);
+			deviceName = ~deviceName.value(device);
+			postf("cc value % control% chan % device %\n", value, control, chan, deviceName);
+			midiReciever.sendMsg("/cc", value, control, deviceName);
 		});
 
 		MIDIdef.bend(\bend, {
-			arg value, chan;
-			midiReciever.sendMsg("/bend", value);
+			arg value, chan, srcID;
+			var device, deviceName;
+			device = ~findMidiDevice.value(srcID);
+			deviceName = ~deviceName.value(device);
+			midiReciever.sendMsg("/bend", value, deviceName);
 		});
 	},
 	{
@@ -82,13 +112,12 @@
 	s.options.sampleRate = 96000;
 	s.options.numBuffers = 2056;
 	s.options.memSize = 2.pow(20);
-	s.dumpOSC(1);
+	s.dumpOSC(0);
 	s.doWhenBooted({
 		~midiBootFunction.value;
 	});
 };
 )
-
 
 // Ordinary config
 (
@@ -104,4 +133,37 @@
 (
 ~setupConfig.value("64ch Scarlett Aggregate", 64);
 )
+
+
+(
+var server, score;
+
+server = Server(\nrt,
+    options: ServerOptions.new
+	.sampleRate_(96000)
+    .numOutputBusChannels_(24)
+    .numInputBusChannels_(2));
+
+score = Score.newFromFile("/Users/danielstahl/Documents/Music/Pieces/Ambient Music/Ambient Music 4/sc/ambient-music-4/ambientMusic4Score.txt");
+
+score.recordNRT(
+    outputFilePath: "/Users/danielstahl/Documents/Music/Pieces/Ambient Music/Ambient Music 4/stage/ambientMusic4Score.caf".standardizePath,
+    headerFormat: "CAF",
+    sampleFormat: "float",
+    options: server.options,
+	duration: 810,
+    action: { "done".postln }
+);
+
+server.remove;
+)
+
+
+
+
+
+
+
+
+
 
