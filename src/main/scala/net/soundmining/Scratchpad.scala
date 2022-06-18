@@ -45,7 +45,8 @@ object Scratchpad {
       36 -> SawPatch,
       37 -> WhiteNoisePluck,
       38 -> PinkNoisePluck,
-      39 -> DustPatch)
+      39 -> DustPatch,
+      40 -> BankPatch)
   }
 
   val OVERALL_AMP = 4
@@ -160,6 +161,19 @@ object Scratchpad {
         .dust(percControl(0, amp, 0.5, Left(Seq(-4, -4))),
           staticControl(500))
         .lowPass(staticControl(pitch * 4))
+        .pan(staticControl(0))
+        .playWithDuration(start, duration)
+    }
+  }
+
+  object BankPatch extends Patch {
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val pitch = midiToFreq(key)
+      val amp = (velocity / 127.0) * 0.007
+      val duration = 8
+      synthPlayer()
+        .pinkNoise(percControl(0, amp, 0.5, Left(Seq(-4, -4))))
+        .bankOfResonators(Seq(pitch * 6, pitch * 7), Seq(1, 1), Seq(5.1, 5.9))
         .pan(staticControl(0))
         .playWithDuration(start, duration)
     }

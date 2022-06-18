@@ -34,7 +34,7 @@
 };
 
 ~midiBootFunction = {
-	var on, off, cc, bend, midiReciever;
+	var midiReciever;
 
 	MIDIClient.init;
 	MIDIIn.connectAll;
@@ -141,17 +141,17 @@ var server, score;
 server = Server(\nrt,
     options: ServerOptions.new
 	.sampleRate_(96000)
-    .numOutputBusChannels_(24)
+    .numOutputBusChannels_(52)
     .numInputBusChannels_(2));
 
-score = Score.newFromFile("/Users/danielstahl/Documents/Music/Pieces/Ambient Music/Ambient Music 4/sc/ambient-music-4/ambientMusic4Score.txt");
+score = Score.newFromFile("/Users/danielstahl/Documents/Music/Pieces/Concrete Music/Concrete Music 9/sc/concrete-music-9/concreteMusic9.txt");
 
 score.recordNRT(
-    outputFilePath: "/Users/danielstahl/Documents/Music/Pieces/Ambient Music/Ambient Music 4/stage/ambientMusic4Score.caf".standardizePath,
+    outputFilePath: "/Users/danielstahl/Documents/Music/Pieces/Concrete Music/Concrete Music 9/stage/concreteMusic9Score.caf".standardizePath,
     headerFormat: "CAF",
     sampleFormat: "float",
     options: server.options,
-	duration: 810,
+	duration: 310,
     action: { "done".postln }
 );
 
