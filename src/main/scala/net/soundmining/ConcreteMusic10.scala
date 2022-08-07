@@ -1,1389 +1,205 @@
 package net.soundmining
 
 import net.soundmining.Generative.{WeightedRandom, randomRange}
-import net.soundmining.modular.ModularSynth.staticControl
-import net.soundmining.modular.{SoundPlay, SynthPlayer}
+import net.soundmining.modular.ModularSynth.{lineControl, percControl, relativePercControl, staticControl}
 import net.soundmining.synth.SuperColliderClient.loadDir
 import net.soundmining.synth.{EmptyPatch, Instrument, Patch, PatchPlayback, SuperColliderClient, SuperColliderReceiver}
-
+import ConcreteMusic10Common._
+import StoneHitSound._
+import StoneScratchSound._
+import WoodHitSound._
+import WoodScratchSound._
+import MetalHitSound._
+import MetalScratchSound._
 import scala.annotation.tailrec
-import scala.util.Random
 
 object ConcreteMusic10 {
-  implicit val client: SuperColliderClient = SuperColliderClient()
-  implicit val random: Random = new Random()
   val SYNTH_DIR = "/Users/danielstahl/Documents/Projects/soundmining-modular/src/main/sc/synths"
-  val SOUNDS_DIR = "/Users/danielstahl/Documents/Music/Pieces/Concrete Music/Concrete Music 10/sounds"
 
-  val METAL_HIT_1 = "metal-hit-1"
-  val METAL_HIT_2 = "metal-hit-2"
-  val METAL_HITS = Seq(METAL_HIT_1, METAL_HIT_2)
-  val METAL_SCRATCH_1 = "metal-scratch-1"
-  val METAL_SCRATCH_2 = "metal-scratch-2"
-  val METAL_SCRATCHES = Seq(METAL_SCRATCH_1, METAL_SCRATCH_2)
-  val STONE_HIT_1 = "stone-hit-1"
-  val STONE_HIT_2 = "stone-hit-2"
-  val STONE_HITS = Seq(STONE_HIT_1, STONE_HIT_2)
-  val STONE_SCRATCH_1 = "stone-scratch-1"
-  val STONE_SCRATCH_2 = "stone-scratch-2"
-  val STONE_SCRATCH_3 = "stone-scratch-3"
-  val STONE_SCRATCH_4 = "stone-scratch-4"
-  val STONE_SCRATCHES = Seq(STONE_SCRATCH_1, STONE_SCRATCH_2, STONE_SCRATCH_3, STONE_SCRATCH_4)
-  val WOOD_HIT_1 = "wood-hit-1"
-  val WOOD_HIT_2 = "wood-hit-2"
-  val WOOD_HITS = Seq(WOOD_HIT_1, WOOD_HIT_2)
-  val WOOD_SCRATCH_1 = "wood-scratch-1"
-  val WOOD_SCRATCH_2 = "wood-scratch-2"
-  val WOOD_SCRATCH_3 = "wood-scratch-3"
-  val WOOD_SCRATCH_4 = "wood-scratch-4"
-  val WOOD_SCRATCHES = Seq(WOOD_SCRATCH_1, WOOD_SCRATCH_2, WOOD_SCRATCH_3, WOOD_SCRATCH_4)
-
-  sealed trait SoundVariant {
-    override def toString: String = {
-      this.getClass.getSimpleName.replace("$", "")
-    }
-  }
-
-  object CLEAN_SOUND extends SoundVariant
-  object LOW_SOUND extends SoundVariant
-  object LOW_MIDDLE_SOUND extends SoundVariant
-  object MIDDLE_SOUND extends SoundVariant
-  object MIDDLE_HIGH_SOUND extends SoundVariant
-  object HIGH_SOUND extends SoundVariant
-
-  val soundPlays: Map[String, SoundPlay] = Map(
-    // 148, 647, 1569 (peak), 3420, 4658, 8774
-    METAL_HIT_1 -> SoundPlay(s"$SOUNDS_DIR/Metal hit 1.flac", 0.394, 0.997),
-    // 184, 661, 1076 (peak), 4381, 6431, 11309
-    METAL_HIT_2 -> SoundPlay(s"$SOUNDS_DIR/Metal hit 2.flac", 0.416, 0.995),
-    // 808, 1263, 1953 (peak), 2426, 3186, 4272
-    METAL_SCRATCH_1 -> SoundPlay(s"$SOUNDS_DIR/Metal scratch 1.flac", 0.052, 0.723),
-    // 267, 849, 1674 (peak), 2547, 3230, 4306, 5970, 9328
-    METAL_SCRATCH_2 -> SoundPlay(s"$SOUNDS_DIR/Metal scratch 2.flac", 0.145, 0.755),
-    // 934 (peak), 1379, 2333, 3461, 6163, 9816
-    STONE_HIT_1 -> SoundPlay(s"$SOUNDS_DIR/Stone hit 1.flac", 0.379, 0.658),
-    // 928, 1598, 3469 (peak), 6157, 7025, 8317, 9852
-    STONE_HIT_2 -> SoundPlay(s"$SOUNDS_DIR/Stone hit 2.flac", 0.298, 0.449),
-    // 881, 2029 (peak), 3516, 7211, 10002
-    STONE_SCRATCH_1 -> SoundPlay(s"$SOUNDS_DIR/Stone scratch 1.flac", 0.084, 0.738),
-    // 403, 801, 1883, 3474 (peak), 6262, 7351, 11256
-    STONE_SCRATCH_2 -> SoundPlay(s"$SOUNDS_DIR/Stone scratch 2.flac", 0.055, 0.422),
-    // 342, 841, 2021, 3504 (peak), 7084, 10980
-    STONE_SCRATCH_3 -> SoundPlay(s"$SOUNDS_DIR/Stone scratch 3.flac", 0.067, 0.415),
-    // 252, 770, 1003, 1509, 2033, 3463 (peak), 7193, 11203
-    STONE_SCRATCH_4 -> SoundPlay(s"$SOUNDS_DIR/Stone scratch 4.flac", 0.094, 0.549),
-    // 613 (peak), 1044, 1955, 3052, 4684, 6199
-    WOOD_HIT_1 -> SoundPlay(s"$SOUNDS_DIR/Wood hit 1.flac", 0.201, 0.339),
-    // 436 (peak), 977, 1443, 2308, 4603, 5312
-    WOOD_HIT_2 -> SoundPlay(s"$SOUNDS_DIR/Wood hit 2.flac", 0.175, 0.304),
-    // 398 (peak), 1472, 2299, 3642, 4495, 7342, 14677
-    WOOD_SCRATCH_1 -> SoundPlay(s"$SOUNDS_DIR/Wood scratch 1.flac", 0.100, 0.579),
-    // 623 (peak), 1467, 3022, 3872, 6188, 8966, 11589
-    WOOD_SCRATCH_2 -> SoundPlay(s"$SOUNDS_DIR/Wood scratch 2.flac", 0.105, 0.473),
-    // 661 (peak), 1501, 1996, 2326, 3156, 5215, 9061, 10836
-    WOOD_SCRATCH_3 -> SoundPlay(s"$SOUNDS_DIR/Wood scratch 3.flac", 0.046, 0.530),
-    // 685 (peak), 1320, 2529, 3713, 4956, 6408, 8062, 9716, 12263
-    WOOD_SCRATCH_4 -> SoundPlay(s"$SOUNDS_DIR/Wood scratch 4.flac", 0.138, 0.559),
-  )
-
-  val synthPlayer = SynthPlayer(soundPlays = soundPlays, numberOfOutputBuses = 2)
-  val patch = CloudPatch3
+  val patch = Part3Patch
   var patchPlayback: PatchPlayback = PatchPlayback(patch = patch, client = client)
   val superColliderReceiver: SuperColliderReceiver = SuperColliderReceiver(patchPlayback)
 
-  def pickItems[T](items: Seq[T], size: Int)(implicit random: Random): Seq[T] =
-    random.shuffle(items).take(size)
+  object WoodHarmonicPatch2 extends Patch {
+    var variantNote = 5
 
-  def randomIntRange(min: Int, max: Int)(implicit random: Random): Int =
-    min + random.nextInt((max - min) + 1)
+    def getVariants: Map[SoundVariant, Seq[(Double, Int, Double, Double, Double, Double) => Unit]] = {
+      variantNote match {
+        case 0 => WoodHit1HarmonicVariants.variants
+        case 1 => WoodHit2HarmonicVariants.variants
+        case 2 => WoodScratch1HarmonicVariants.variants
+        case 3 => WoodScratch2HarmonicVariants.variants
+        case 4 => WoodScratch3HarmonicVariants.variants
+        case 5 => WoodScratch4HarmonicVariants.variants
+      }
+    }
 
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val note = key % 12
+      val octave = (key / 12) - 1
+      val amp = velocity / 127.0
 
-  case class SoundMixes(sound: String,
-                        soundVariants: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]],
-                        soundVariantMixes: Map[SoundVariant, Map[SoundVariant, WeightedRandom[Int]]]) {
-    def playVariant(soundVariant: SoundVariant, start: Double, amp: Double, pan: Double): Unit = {
-      println(s"$soundVariant $sound start $start amp $amp pan $pan")
-      soundVariantMixes(soundVariant).foreach {
-        case (variant, sizeChooser) =>
-          pickItems(soundVariants(variant), sizeChooser.choose())
-            .foreach(instr => instr(start, amp, pan))
+      println(s"Note $note octave $octave velocity $velocity $device")
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          variantNote = note
+          println(s"Variant $note")
+        case _ =>
+          val variants = getVariants
+          val variant = octave match {
+            case 2 =>
+              variants(LOW_SOUND).head
+            case 3 =>
+              variants(LOW_SOUND)(1)
+            case 4 =>
+              variants(MIDDLE_SOUND).head
+            case 5 =>
+              variants(HIGH_SOUND).head
+          }
+          variant(start, note, amp, 0.5, randomRange(5, 8), randomRange(-0.8, 0.8))
+      }
+
+    }
+  }
+
+  object MetalHarmonicPatch extends Patch {
+    var variantNote = 1
+
+    def getVariants: Map[SoundVariant, Seq[(Double, Int, Double, Double, Double, Double) => Unit]] = {
+      variantNote match {
+        case 0 => MetalHit1HarmonicVariants.variants
+        case 1 => MetalHit2HarmonicVariants.variants
+      }
+    }
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val note = key % 12
+      val octave = (key / 12) - 1
+      val amp = velocity / 127.0
+
+      println(s"Note $note octave $octave velocity $velocity $device")
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          variantNote = note
+          println(s"Variant $note")
+        case _ =>
+          val variants = getVariants
+          val variant = octave match {
+            case 2 =>
+              variants(LOW_SOUND).head
+            case 3 =>
+              variants(LOW_SOUND)(1)
+            case 4 =>
+              variants(MIDDLE_SOUND).head
+            case 5 =>
+              variants(HIGH_SOUND).head
+          }
+          variant(start, note, amp, 0.5, randomRange(5, 8), randomRange(-0.8, 0.8))
+      }
+
+    }
+  }
+
+  object StoneHarmonicPatch extends Patch {
+    var variantNote = 0
+
+    def getVariants: Map[SoundVariant, Seq[(Double, Int, Double, Double, Double, Double) => Unit]] = {
+      variantNote match {
+        case 0 => StoneHit1HarmonicVariants.variants
+      }
+    }
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val note = key % 12
+      val octave = (key / 12) - 1
+      val amp = velocity / 127.0
+
+      println(s"Note $note octave $octave velocity $velocity $device")
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          variantNote = note
+          println(s"Variant $note")
+        case _ =>
+          val variants = getVariants
+          val variant = octave match {
+            case 2 =>
+              variants(LOW_SOUND).head
+            case 3 =>
+              variants(LOW_SOUND)(1)
+            case 4 =>
+              variants(MIDDLE_SOUND).head
+            case 5 =>
+              variants(HIGH_SOUND).head
+          }
+          variant(start, note, amp, 0.5, randomRange(5, 8), randomRange(-0.8, 0.8))
+      }
+
+    }
+  }
+
+  object WoodHitHarmonicPatch extends Patch {
+    // Melody. 0 1 0 1 (at 0.66)
+
+    // 613 (peak), 1044, 1955, 3052, 4684, 6199
+    val WOOD_HIT_1_RATIO = 1044.0 / 613.0
+    val WOOD_HIT_1_INV_RATIO = 613.0 / 1044.0
+
+    val WOOD_HIT_1_RATIO_SPECTRUM = Spectrum.makeSpectrum2(613 * WOOD_HIT_1_INV_RATIO * WOOD_HIT_1_INV_RATIO, WOOD_HIT_1_RATIO, 50)
+    val WOOD_HIT_1_INV_RATIO_SPECTRUM = Spectrum.makeSpectrum2(613 * WOOD_HIT_1_INV_RATIO * WOOD_HIT_1_INV_RATIO, WOOD_HIT_1_INV_RATIO, 50)
+
+    // 436 (peak), 977, 1443, 2308, 4603, 5312
+    val WOOD_HIT_2_RATIO = 977.0 / 436.0
+    val WOOD_HIT_2_INV_RATIO = 436.0 / 977.0
+
+    val WOOD_HIT_2_RATIO_SPECTRUM = Spectrum.makeSpectrum2(613 * WOOD_HIT_2_INV_RATIO * WOOD_HIT_2_INV_RATIO, WOOD_HIT_2_RATIO, 50)
+    val WOOD_HIT_2_INV_RATIO_SPECTRUM = Spectrum.makeSpectrum2(613 * WOOD_HIT_2_INV_RATIO * WOOD_HIT_2_INV_RATIO, WOOD_HIT_2_INV_RATIO, 50)
+
+    def playHarmony1(start: Double, spectrum: Seq[Double], note: Int, amp: Double): Unit = {
+      synthPlayer()
+        .pulse(staticControl(WOOD_HIT_1_RATIO_SPECTRUM(note)), relativePercControl(0.0001, amp, 0.33, Left(Seq(0, 0))))
+        .ring(staticControl(WOOD_HIT_1_RATIO_SPECTRUM(note + 1)))
+        .ring(staticControl(WOOD_HIT_1_RATIO_SPECTRUM(note + 2)))
+        .pan(staticControl(0))
+        .playWithDuration(start, randomRange(5, 8))
+
+      synthPlayer()
+        .saw(staticControl(spectrum(note + 5)), relativePercControl(0.0001, amp, 0.5, Left(Seq(0, 0))))
+        .ring(staticControl(spectrum(note + 6)))
+        .ring(staticControl(spectrum(note + 7)))
+        .pan(staticControl(0.2))
+        .playWithDuration(start, randomRange(5, 8))
+
+      synthPlayer()
+        .triangle(staticControl(spectrum(note + 10)), relativePercControl(0.0001, amp, 0.66, Left(Seq(0, 0))))
+        .ring(staticControl(spectrum(note + 1)))
+        .ring(staticControl(spectrum(note + 12)))
+        .pan(staticControl(-0.2))
+        .playWithDuration(start, randomRange(5, 8))
+    }
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val note = key % 12
+      val octave = (key / 12) - 1
+      val amp = velocity / 127.0
+
+      println(s"Note $note octave $octave velocity $velocity")
+
+      octave match {
+        case 2 =>
+          playHarmony1(start, WOOD_HIT_1_RATIO_SPECTRUM, note, amp)
+        case 3 =>
+          playHarmony1(start, WOOD_HIT_1_INV_RATIO_SPECTRUM, note, amp)
+        case 4 =>
+          playHarmony1(start, WOOD_HIT_2_RATIO_SPECTRUM, note, amp)
+        case 5 =>
+          playHarmony1(start, WOOD_HIT_2_INV_RATIO_SPECTRUM, note, amp)
+        case _ =>
       }
     }
   }
-
-  case class MaterialMixes(soundMixes: Seq[SoundMixes]) {
-    val evenChooseMixes = makeEvenWeightedRandom(soundMixes)
-
-    def playVariant(soundVariant: SoundVariant, start: Double, amp: Double, pan: Double): Unit = {
-      evenChooseMixes.choose().playVariant(soundVariant, start, amp, pan)
-    }
-  }
-
-  // 934 (peak), 1379, 2333, 3461, 6163, 9816
-  val STONE_HIT_1_RATE = 934.0 / 1379.0
-  val STONE_HIT_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(934 * STONE_HIT_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(934))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(934))
-        .lowPass(staticControl(1379))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1379))
-        .lowPass(staticControl(2333))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2333))
-        .lowPass(staticControl(3461))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3461))
-        .lowPass(staticControl(6163))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6163))
-        .lowPass(staticControl(9816))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(9816))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val STONE_HIT_1_MIXES = SoundMixes(STONE_HIT_1, STONE_HIT_1_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.4), (2, 0.6)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2))))))
-
-  // 928, 1598, 3469 (peak), 6157, 7025, 8317, 9852
-  val STONE_HIT_2_RATE = 3469.0 / 6157.0
-  val STONE_HIT_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(928 * STONE_HIT_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(928))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(928))
-        .lowPass(staticControl(1598))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1598))
-        .lowPass(staticControl(3469))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 928, 1598, 3469 (peak), 6157, 7025, 8317, 9852
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3469))
-        .lowPass(staticControl(6157))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6157))
-        .lowPass(staticControl(7025))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(7025))
-        .lowPass(staticControl(8317))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(8317))
-        .lowPass(staticControl(9852))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(9852))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-    val STONE_HIT_2_MIXES = SoundMixes(STONE_HIT_2, STONE_HIT_2_VARIANTS,
-      Map(
-        LOW_SOUND -> Map(
-          LOW_SOUND -> WeightedRandom(Seq((1, 0.7), (2, 0.3)))),
-        LOW_MIDDLE_SOUND -> Map(
-          LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-          MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.5), (2, 0.3)))),
-        MIDDLE_SOUND -> Map(
-          MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-        MIDDLE_HIGH_SOUND -> Map(
-          MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-          HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-        HIGH_SOUND -> Map(
-          HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.5), (3, 0.3), (4, 0.1))))))
-
-  val STONE_HIT_MIXES = MaterialMixes(Seq(STONE_HIT_1_MIXES, STONE_HIT_2_MIXES))
-
-  val STONE_SCRATCH_1_RATE = 2029.0 / 3516.0
-  // 881, 2029 (peak), 3516, 7211, 10002
-  val STONE_SCRATCH_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(881 * STONE_SCRATCH_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(881))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(881))
-        .lowPass(staticControl(2029))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2029))
-        .lowPass(staticControl(3516))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3516))
-        .lowPass(staticControl(7211))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(7211))
-        .lowPass(staticControl(10002))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(10002))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val STONE_SCRATCH_1_MIXES = SoundMixes(STONE_SCRATCH_1, STONE_SCRATCH_1_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.4), (2, 0.4)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1))))))
-
-  val STONE_SCRATCH_2_RATE = 3474.0 / 6262.0
-  // 403, 801, 1883, 3474 (peak), 6262, 7351, 11256
-  val STONE_SCRATCH_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(402 * STONE_SCRATCH_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(403))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(403))
-        .lowPass(staticControl(801))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(801))
-        .lowPass(staticControl(1883))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1883))
-        .lowPass(staticControl(3474))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-      HIGH_SOUND -> Seq(
-        (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-          .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-          .highPass(staticControl(3474))
-          .lowPass(staticControl(6262))
-          .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-          .play(start),
-        (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-          .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-          .highPass(staticControl(6262))
-          .lowPass(staticControl(7351))
-          .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-          .play(start),
-        (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-          .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-          .highPass(staticControl(7351))
-          .lowPass(staticControl(11256))
-          .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-          .play(start),
-        (start, amp, pan) => synthPlayer(STONE_SCRATCH_2)
-          .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-          .highPass(staticControl(11256))
-          .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-          .play(start)))
-
-  val STONE_SCRATCH_2_MIXES = SoundMixes(
-    STONE_SCRATCH_2, STONE_SCRATCH_2_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.4), (2, 0.4)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.7), (3, 0.1)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1))))))
-
-  val STONE_SCRATCH_3_RATE = 3504.0 / 7084.0
-  // 342, 841, 2021, 3504 (peak), 7084, 10980
-  val STONE_SCRATCH_3_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(342 * STONE_SCRATCH_3_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(342))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(342))
-        .lowPass(staticControl(841))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(841))
-        .lowPass(staticControl(2021))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2021))
-        .lowPass(staticControl(3504))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 342, 841, 2021, 3504 (peak), 7084, 10980
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3504))
-        .lowPass(staticControl(7084))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(7084))
-        .lowPass(staticControl(10980))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(10980))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val STONE_SCRATCH_3_MIXES = SoundMixes(
-    STONE_SCRATCH_3, STONE_SCRATCH_3_VARIANTS, Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.4), (2, 0.4)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.4), (2, 0.4), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2))))))
-
-  val STONE_SCRATCH_4_RATE = 3463.0 / 7193.0
-  // 252, 770, 1003, 1509, 2033, 3463 (peak), 7193, 11203
-  val STONE_SCRATCH_4_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(252 * STONE_SCRATCH_4_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(252))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(252))
-        .lowPass(staticControl(770))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(770))
-        .lowPass(staticControl(1003))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1003))
-        .lowPass(staticControl(1509))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1509))
-        .lowPass(staticControl(2033))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2033))
-        .lowPass(staticControl(3463))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 252, 770, 1003, 1509, 2033, 3463 (peak), 7193, 11203
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3463))
-        .lowPass(staticControl(7193))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(7193))
-        .lowPass(staticControl(11203))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(STONE_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(11203))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val STONE_SCRATCH_4_MIXES = SoundMixes(
-    STONE_SCRATCH_4, STONE_SCRATCH_4_VARIANTS, Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.4), (3, 0.3), (4, 0.1)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.4), (1, 0.3), (2, 0.2), (3, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2))))))
-
-  val STONE_SCRATCH_MIXES = MaterialMixes(
-    Seq(STONE_SCRATCH_1_MIXES, STONE_SCRATCH_2_MIXES, STONE_SCRATCH_3_MIXES, STONE_SCRATCH_4_MIXES))
-
-  val WOOD_HIT_1_RATE = 613.0 / 1044.0
-  // 613 (peak), 1044, 1955, 3052, 4684, 6199
-  val WOOD_HIT_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(613 * WOOD_HIT_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 2)
-        .lowPass(staticControl(613))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(613))
-        .lowPass(staticControl(1044))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1044))
-        .lowPass(staticControl(1955))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1955))
-        .lowPass(staticControl(3052))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 613 (peak), 1044, 1955, 3052, 4684, 6199
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3052))
-        .lowPass(staticControl(4684))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4684))
-        .lowPass(staticControl(6199))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6199))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val WOOD_HIT_1_MIXES = SoundMixes(
-    WOOD_HIT_1, WOOD_HIT_1_VARIANTS, Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2))))))
-
-  val WOOD_HIT_2_RATE = 436.0 / 977.0
-  // 436 (peak), 977, 1443, 2308, 4603, 5312
-  val WOOD_HIT_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 4)
-        .lowPass(staticControl(436 * WOOD_HIT_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 2)
-        .lowPass(staticControl(436))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(436))
-        .lowPass(staticControl(977))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(977))
-        .lowPass(staticControl(1443))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1443))
-        .lowPass(staticControl(2308))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 436 (peak), 977, 1443, 2308, 4603, 5312
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2308))
-        .lowPass(staticControl(4603))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4603))
-        .lowPass(staticControl(5312))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(5312))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val WOOD_HIT_2_MIXES = SoundMixes(
-    WOOD_HIT_2, WOOD_HIT_2_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND ->  Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.6), (3, 0.2))))))
-
-  val WOOD_HIT_MIXES = MaterialMixes(Seq(WOOD_HIT_1_MIXES, WOOD_HIT_2_MIXES))
-
-  val WOOD_SCRATCH_1_RATE = 398.0 / 1472.0
-  // 398 (peak), 1472, 2299, 3642, 4495, 7342, 14677
-  val WOOD_SCRATCH_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(398 * WOOD_SCRATCH_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 1)
-        .lowPass(staticControl(398))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(398))
-        .lowPass(staticControl(1472))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1472))
-        .lowPass(staticControl(2299))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2299))
-        .lowPass(staticControl(3642))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 398 (peak), 1472, 2299, 3642, 4495, 7342, 14677
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3642))
-        .lowPass(staticControl(4495))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4495))
-        .lowPass(staticControl(7342))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(7342))
-        .lowPass(staticControl(14677))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(14677))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)))
-
-  val WOOD_SCRATCH_1_MIXES = SoundMixes(
-    WOOD_SCRATCH_1, WOOD_SCRATCH_1_VARIANTS, Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1))))))
-
-  val WOOD_SCRATCH_2_RATE = 623.0 / 1467.0
-  // 623 (peak), 1467, 3022, 3872, 6188, 8966, 11589
-  val WOOD_SCRATCH_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(623 * WOOD_SCRATCH_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 1)
-        .lowPass(staticControl(623))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(623))
-        .lowPass(staticControl(1467))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1467))
-        .lowPass(staticControl(3022))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3022))
-        .lowPass(staticControl(3872))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 623 (peak), 1467, 3022, 3872, 6188, 8966, 11589
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3872))
-        .lowPass(staticControl(6188))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6188))
-        .lowPass(staticControl(8966))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(8966))
-        .lowPass(staticControl(11589))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(11589))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)))
-
-  val WOOD_SCRATCH_2_MIXES = SoundMixes(
-    WOOD_SCRATCH_2, WOOD_SCRATCH_2_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1))))))
-
-  val WOOD_SCRATCH_3_RATE = 661.0 / 1501.0
-  // 661 (peak), 1501, 1996, 2326, 3156, 5215, 9061, 10836
-  val WOOD_SCRATCH_3_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(661 * WOOD_SCRATCH_3_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 1)
-        .lowPass(staticControl(661))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(661))
-        .lowPass(staticControl(1501))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1501))
-        .lowPass(staticControl(1996))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1996))
-        .lowPass(staticControl(2326))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2326))
-        .lowPass(staticControl(3156))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 661 (peak), 1501, 1996, 2326, 3156, 5215, 9061, 10836
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3156))
-        .lowPass(staticControl(5215))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(5215))
-        .lowPass(staticControl(9061))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(9061))
-        .lowPass(staticControl(10836))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_3)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(10836))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val WOOD_SCRATCH_3_MIXES = SoundMixes(
-    WOOD_SCRATCH_3, WOOD_SCRATCH_3_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.4), (3, 0.3), (4, 0.1)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.5), (3, 0.2), (4, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.5), (3, 0.2), (4, 0.1))))))
-
-  val WOOD_SCRATCH_4_RATE = 685.0 / 1320.0
-  // 685 (peak), 1320, 2529, 3713, 4956, 6408, 8062, 9716, 12263
-  val WOOD_SCRATCH_4_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 3)
-        .lowPass(staticControl(685 * WOOD_SCRATCH_4_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 1)
-        .lowPass(staticControl(685))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(685))
-        .lowPass(staticControl(1320))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1320))
-        .lowPass(staticControl(2529))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2529))
-        .lowPass(staticControl(3713))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    // 685 (peak), 1320, 2529, 3713, 4956, 6408, 8062, 9716, 12263
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3713))
-        .lowPass(staticControl(4956))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4956))
-        .lowPass(staticControl(6408))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6408))
-        .lowPass(staticControl(8062))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(8062))
-        .lowPass(staticControl(9716))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(9716))
-        .lowPass(staticControl(12263))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(WOOD_SCRATCH_4)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(12263))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val WOOD_SCRATCH_4_MIXES = SoundMixes(
-    WOOD_SCRATCH_4, WOOD_SCRATCH_4_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND ->Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.3), (3, 0.2), (4, 0.2), (5, 0.1), (6, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.3), (3, 0.2), (4, 0.2), (5, 0.1), (6, 0.1))))))
-
-  val WOOD_SCRATCH_MIXES = MaterialMixes(Seq(
-    WOOD_SCRATCH_1_MIXES, WOOD_SCRATCH_2_MIXES, WOOD_SCRATCH_3_MIXES, WOOD_SCRATCH_4_MIXES))
-
-  val METAL_HIT_1_RATE = 1569.0 / 3420.0
-  // 148, 647, 1569 (peak), 3420, 4658, 8774
-  val METAL_HIT_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 80)
-        .lowPass(staticControl(148 * METAL_HIT_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 50)
-        .lowPass(staticControl(148))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .highPass(staticControl(148))
-        .lowPass(staticControl(647))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(647))
-        .lowPass(staticControl(1569))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1569))
-        .lowPass(staticControl(3420))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3420))
-        .lowPass(staticControl(4658))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4658))
-        .lowPass(staticControl(8774))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .highPass(staticControl(8774))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)))
-
-  val METAL_HIT_1_MIXES = SoundMixes(
-    METAL_HIT_1, METAL_HIT_1_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1))))))
-
-  val METAL_HIT_2_RATE = 1076.0 / 4381.0
-  // 184, 661, 1076 (peak), 4381, 6431, 11309
-  val METAL_HIT_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 80)
-        .lowPass(staticControl(184 * METAL_HIT_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 50)
-        .lowPass(staticControl(184))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .highPass(staticControl(184))
-        .lowPass(staticControl(661))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(661))
-        .lowPass(staticControl(1076))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1076))
-        .lowPass(staticControl(4381))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4381))
-        .lowPass(staticControl(6431))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(6431))
-        .lowPass(staticControl(11309))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_HIT_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .highPass(staticControl(11309))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)))
-
-  val METAL_HIT_2_MIXES = SoundMixes(
-    METAL_HIT_2, METAL_HIT_2_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1))))))
-
-  val METAL_HIT_MIXES = MaterialMixes(Seq(METAL_HIT_1_MIXES, METAL_HIT_2_MIXES))
-
-  val METAL_SCRATCH_1_RATE = 1953.0 / 2426.0
-  // 808, 1263, 1953 (peak), 2426, 3186, 4272
-  val METAL_SCRATCH_1_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 2)
-        .lowPass(staticControl(808 * METAL_SCRATCH_1_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 2)
-        .lowPass(staticControl(808))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(808))
-        .lowPass(staticControl(1263))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1263))
-        .lowPass(staticControl(1953))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1953))
-        .lowPass(staticControl(2426))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2426))
-        .lowPass(staticControl(3186))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3186))
-        .lowPass(staticControl(4272))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_1)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4272))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)))
-
-  val METAL_SCRATCH_1_MIXES = SoundMixes(
-    METAL_SCRATCH_1, METAL_SCRATCH_1_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.3), (2, 0.5), (3, 0.2)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1))))))
-
-  val METAL_SCRATCH_2_RATE = 1674.0 / 2547.0
-  // 267, 849, 1674 (peak), 2547, 3230, 4306, 5970, 9328
-  val METAL_SCRATCH_2_VARIANTS: Map[SoundVariant, Seq[(Double, Double, Double) => Unit]] = Map(
-    CLEAN_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    LOW_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .lowPass(staticControl(267 * METAL_SCRATCH_2_RATE))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 10)
-        .lowPass(staticControl(267))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    MIDDLE_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(267))
-        .lowPass(staticControl(849))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(849))
-        .lowPass(staticControl(1674))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(1674))
-        .lowPass(staticControl(2547))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(2547))
-        .lowPass(staticControl(3230))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start)),
-    HIGH_SOUND -> Seq(
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(3230))
-        .lowPass(staticControl(4306))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(4306))
-        .lowPass(staticControl(5970))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp)
-        .highPass(staticControl(5970))
-        .lowPass(staticControl(9328))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start),
-      (start, amp, pan) => synthPlayer(METAL_SCRATCH_2)
-        .playMono(1.0 + randomRange(-0.001, 0.001), amp * 5)
-        .highPass(staticControl(9328))
-        .pan(staticControl(pan + randomRange(-0.1, 0.1)))
-        .play(start))
-  )
-
-  val METAL_SCRATCH_2_MIXES = SoundMixes(
-    METAL_SCRATCH_2, METAL_SCRATCH_2_VARIANTS,
-    Map(
-      LOW_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((1, 0.6), (2, 0.4)))),
-      LOW_MIDDLE_SOUND -> Map(
-        LOW_SOUND -> WeightedRandom(Seq((0, 0.1), (1, 0.6), (2, 0.3))),
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.2), (1, 0.3), (2, 0.4), (3, 0.1)))),
-      MIDDLE_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((1, 0.2), (2, 0.5), (3, 0.2), (4, 0.1)))),
-      MIDDLE_HIGH_SOUND -> Map(
-        MIDDLE_SOUND -> WeightedRandom(Seq((0, 0.5), (1, 0.4), (2, 0.1))),
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.8), (3, 0.1)))),
-      HIGH_SOUND -> Map(
-        HIGH_SOUND -> WeightedRandom(Seq((1, 0.1), (2, 0.6), (3, 0.2), (4, 0.1))))))
-
-  val METAL_SCRATCH_MIXES = MaterialMixes(Seq(METAL_SCRATCH_1_MIXES, METAL_SCRATCH_2_MIXES))
 
   object SoundPlayback extends Patch {
     override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
@@ -1414,14 +230,6 @@ object ConcreteMusic10 {
         .pan(staticControl(0))
         .play(start)
     }
-  }
-
-  def makeEvenWeightedRandom[T](values: Seq[T]): WeightedRandom[T] = {
-    val rate = 1.0 / (values.size - 1)
-    val pairs = values.map {
-      value => (value, rate)
-    }
-    WeightedRandom(pairs)
   }
 
   trait DynamicWeightedRandom[T] {
@@ -1671,6 +479,485 @@ object ConcreteMusic10 {
       }
 
     }
+  }
+
+  case class CloudInstrument(totalLengthGenerator: WeightedRandom[() => Double],
+                             timeGenerator: WeightedRandom[() => Double],
+                             soundGenerator: WeightedRandom[(() => MaterialMixes, SoundVariant)],
+                             ampGenerator: (Double, Double) => Double) {
+    def playCloud(start: Double, overallAmp: Double): Double = {
+      val totalLength = totalLengthGenerator.choose().apply()
+      val pan = randomRange(-0.8, 0.8)
+      println(s"Cloud start $start total length $totalLength amp $overallAmp center pan $pan")
+      var time = start
+      while (time < start + totalLength) {
+        val localPan = randomRange(pan - 0.2, pan + 0.2)
+        val localTime = timeGenerator.choose().apply()
+        val localAmp = ampGenerator(overallAmp, localTime)
+        val (materialMix, variant) = soundGenerator.choose()
+        materialMix.apply().playVariant(variant, time, localAmp, localPan)
+        time = time + localTime
+      }
+      totalLength
+    }
+  }
+
+  object Part3Patch extends Patch {
+
+    val lowStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.3),
+        (() => randomRange(0.60, 1.30), 0.6))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, LOW_SOUND), 0.50),
+        ((() => STONE_HIT_MIXES, LOW_MIDDLE_SOUND), 0.30),
+        ((() => STONE_SCRATCH_MIXES, LOW_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.10)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(3, 5), 0.2),
+        (() => randomRange(2, 3), 0.8))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.15), 0.80),
+        (() => randomRange(0.35, 0.9), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.92),
+        ((() => STONE_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.08))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    // long, long, short, pause. long long long pause. Repeat
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val amp = velocity / 127.0
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          key match {
+            case 36 => lowStoneInstrument.playCloud(start, amp)
+            case 37 => middleStoneInstrument.playCloud(start, amp)
+            case _ =>
+          }
+        case "KEYBOARD:microKEY2" =>
+          StoneHarmonicPatch.noteHandle(start, key, velocity, device)
+      }
+    }
+
+
+    def play(start: Double, reset: Boolean = true): Double = {
+      if (reset) client.resetClock()
+
+      println(s"Part 2 start $start")
+
+      var time = start
+      0 until 8 foreach {
+        _ =>
+          var overallAmp = randomRange(0.2, 0.8)
+          var cloudLen = lowStoneInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(0.80, 0.99))
+
+          overallAmp = randomRange(0.2, 0.8)
+          cloudLen = lowStoneInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(0.80, 0.99))
+
+          overallAmp = randomRange(0.2, 0.8)
+          cloudLen = middleStoneInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(2.0, 2.25))
+      }
+
+      var nextStart = start + randomRange(13, 21)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 3)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 5)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 2)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 4)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = nextStart + randomRange(13, 21)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 3)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 5)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 2)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 4)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 1)
+      time
+    }
+
+    def playHarmonicVariant1(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = StoneHit1HarmonicVariants.variants(LOW_SOUND)(1)
+      val lowHarmonicVariant = StoneHit1HarmonicVariants.variants(MIDDLE_SOUND).head
+      val duration = randomRange(5, 8)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.8, 0.8)
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        randomRange(0.33, 0.66), // peak
+        duration, //duration
+        pan) // pan
+      lowHarmonicVariant(
+        start + randomRange(-0.4, 1.0), // start
+        note,
+        amp * randomRange(0.5, 0.7), //amp
+        randomRange(0.33, 0.66), // peak
+        duration * randomRange(0.8, 1), // duration
+        pan * randomRange(-0.9, -1.1)) // pan
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant2(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 2 $start note $note")
+      val harmonicVariant = StoneHit1HarmonicVariants.variants(LOW_SOUND).head
+      val middleHarmonicVariant = StoneHit1HarmonicVariants.variants(HIGH_SOUND).head
+      val duration = randomRange(5, 8)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.8, 0.8)
+
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        randomRange(0.33, 0.66), // peak
+        duration, //duration
+        pan) // pan
+      middleHarmonicVariant(
+        start + randomRange(-0.4, 1.0), // start
+        note,
+        amp, //amp
+        randomRange(0.33, 0.66), // peak
+        duration * randomRange(0.8, 1), // duration
+        pan * randomRange(-0.9, -1.1)) // pan
+      start + (duration * nextStartFactor)
+    }
+
+
+  }
+
+  object Part2Patch extends Patch {
+
+    val middleMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(3, 5), 0.8),
+        (() => randomRange(5, 8), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, MIDDLE_SOUND), 0.92),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_SOUND), 0.08))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleHighMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(3, 5), 0.8),
+        (() => randomRange(2, 3), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.15), 0.80),
+        (() => randomRange(0.65, 1.1), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.9),
+        ((() => METAL_SCRATCH_MIXES, HIGH_SOUND), 0.1))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val amp = velocity / 127.0
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          key match {
+            case 36 => middleMetalInstrument.playCloud(start, amp)
+            case 37 => middleHighMetalInstrument.playCloud(start, amp)
+            case _ =>
+          }
+        case "KEYBOARD:microKEY2" =>
+          MetalHarmonicPatch.noteHandle(start, key, velocity, device)
+        //WoodHitHarmonicPatch.noteHandle(start, key, velocity, device)
+      }
+    }
+
+
+    def play(start: Double, reset: Boolean = true): Double = {
+      if (reset) client.resetClock()
+
+      println(s"Part 2 start $start")
+
+      var time = start
+      0 until 8 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = middleMetalInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(1.75, 2.0))
+      }
+      0 until 5 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = middleHighMetalInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(1.25, 1.5))
+      }
+      0 until 8 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = middleMetalInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(1.75, 2.0))
+      }
+      0 until 3 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = middleHighMetalInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(1.25, 1.5))
+      }
+      0 until 2 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = middleMetalInstrument.playCloud(time, overallAmp)
+          time = time + (cloudLen * randomRange(1.75, 2.0))
+      }
+
+      var nextStart = start + randomRange(21, 34)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 3)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 5)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 2)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 4)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = nextStart + randomRange(13, 21)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 3)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 5)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 2)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 4)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 1)
+
+      nextStart = nextStart + randomRange(8, 13)
+      Part3Patch.middleStoneInstrument.playCloud(nextStart, randomRange(0.2, 0.8))
+
+      println(s"Part 2 dust time $time harmony time $nextStart")
+
+      time
+    }
+
+    def playHarmonicVariant1(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = MetalHit1HarmonicVariants.variants(LOW_SOUND)(1)
+      val lowHarmonicVariant = MetalHit1HarmonicVariants.variants(HIGH_SOUND).head
+      val duration = randomRange(5, 8)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.8, 0.8)
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        randomRange(0.33, 0.66), // peak
+        duration, //duration
+        pan) // pan
+      lowHarmonicVariant(
+        start + randomRange(-0.4, 1.0), // start
+        note,
+        amp * randomRange(0.5, 0.7), //amp
+        randomRange(0.33, 0.66), // peak
+        duration * randomRange(0.8, 1), // duration
+        pan * randomRange(-0.9, -1.1)) // pan
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant2(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 2 $start note $note")
+      val harmonicVariant = MetalHit1HarmonicVariants.variants(LOW_SOUND).head
+      val middleHarmonicVariant = MetalHit1HarmonicVariants.variants(MIDDLE_SOUND).head
+      val duration = randomRange(5, 8)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.8, 0.8)
+
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        randomRange(0.33, 0.66), // peak
+        duration, //duration
+        pan) // pan
+      middleHarmonicVariant(
+        start + randomRange(-0.4, 1.0), // start
+        note,
+        amp, //amp
+        randomRange(0.33, 0.66), // peak
+        duration * randomRange(0.8, 1), // duration
+        pan * randomRange(-0.9, -1.1)) // pan
+      start + (duration * nextStartFactor)
+    }
+
+
+  }
+
+  object Part1Patch extends Patch {
+    // 1. low wood hit with small percentage low wood scratch
+    // 2. middle low wood hit with small percentage middle low wood scratch
+    // Repeat lower wood hit random range of 0.55 - 0.85 of the length
+    // Repeat middle low hit random range of 0.15 - 0.45 of the length
+    // lower hit range with 33 percent chance
+    // long melody 0 1 0 3. 5 2 4 1  Sine instrument but double and color with the other instruments
+
+
+    val lowWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, LOW_SOUND), 0.92),
+        ((() => WOOD_SCRATCH_MIXES, LOW_SOUND), 0.08))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val lowMiddleWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(3, 5), 0.6),
+        (() => randomRange(5, 8), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.02, 0.15), 0.90),
+        (() => randomRange(0.40, 0.60), 0.10))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, LOW_MIDDLE_SOUND), 0.9),
+        ((() => WOOD_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.1))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val amp = velocity / 127.0
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          key match {
+            case 36 => lowWoodInstrument.playCloud(start, amp)
+            case 37 => lowMiddleWoodInstrument.playCloud(start, amp)
+            case _ =>
+          }
+        case "KEYBOARD:microKEY2" =>
+          WoodHarmonicPatch2.noteHandle(start, key, velocity, device)
+          //WoodHitHarmonicPatch.noteHandle(start, key, velocity, device)
+      }
+    }
+
+    val playLowMiddleWood = WeightedRandom(Seq((true, 0.33), (false, 0.66)))
+
+    def play(start: Double, reset: Boolean = true): Double = {
+      println(s"Part 1 start $start")
+      if(reset) client.resetClock()
+
+      var time = start
+
+      0 until 26 foreach {
+        _ =>
+          val overallAmp = randomRange(0.2, 0.8)
+          val cloudLen = lowWoodInstrument.playCloud(time, overallAmp)
+          if(playLowMiddleWood.choose()) {
+            val lowMiddleWoodTime = time + (cloudLen * randomRange(0.10, 0.33))
+            lowMiddleWoodInstrument.playCloud(lowMiddleWoodTime, overallAmp)
+          }
+          time = time + (cloudLen * randomRange(0.66, 0.90))
+      }
+
+      var nextStart = start + randomRange(13, 21)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.75, 1.0), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.0, 1.25), 1)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.75, 1.0), 0)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.0, 1.25), 3)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.75, 1.0), 5)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.0, 1.25), 2)
+
+      nextStart = playHarmonicVariant1(nextStart, randomRange(0.75, 1.0), 4)
+      nextStart = playHarmonicVariant1(nextStart, randomRange(1.0, 1.25), 1)
+
+      nextStart = nextStart + randomRange(13, 21)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.75, 1.0), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.0, 1.25), 1)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.75, 1.0), 0)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.0, 1.25), 3)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.75, 1.0), 5)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.0, 1.25), 2)
+
+      nextStart = playHarmonicVariant2(nextStart, randomRange(0.75, 1.0), 4)
+      nextStart = playHarmonicVariant2(nextStart, randomRange(1.0, 1.25), 1)
+
+      nextStart = nextStart + randomRange(8, 13)
+      Part2Patch.middleHighMetalInstrument.playCloud(nextStart, randomRange(0.2, 0.8))
+      println(s"Part 1 dust time $time harmony time $nextStart")
+      time
+
+    }
+
+    def playHarmonicVariant1(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(LOW_SOUND)(1)
+      val duration = randomRange(5, 8)
+      harmonicVariant(start, note, randomRange(0.2, 0.8), randomRange(0.33, 0.66), duration, randomRange(-0.8, 0.8))
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant2(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 2 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(LOW_SOUND)(1)
+      val lowHarmonicVariant = WoodHit1HarmonicVariants.variants(LOW_SOUND).head
+      val duration = randomRange(5, 8)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.8, 0.8)
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        randomRange(0.33, 0.66), // peak
+        duration, //duration
+        pan) // pan
+      lowHarmonicVariant(
+        start + randomRange(-0.4, 1.0), // start
+        note,
+        amp * randomRange(0.5, 0.7), //amp
+        randomRange(0.33, 0.66), // peak
+        duration * randomRange(0.8, 1), // duration
+        pan * randomRange(-0.9, -1.1)) // pan
+      start + (duration * nextStartFactor)
+    }
+  }
+
+  def playAllParts(start: Double = 0, reset: Boolean = true): Unit = {
+    if(reset) client.resetClock()
+
+    val part1Time = Part1Patch.play(start, reset = false)
+    val part2start = part1Time + randomRange(5, 8)
+    val part2Time = Part2Patch.play(part2start, reset = false)
+    val part3start = part2Time + randomRange(5, 8)
+    Part3Patch.play(part3start, reset = false)
   }
 
   def init(): Unit = {
