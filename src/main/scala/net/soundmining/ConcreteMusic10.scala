@@ -16,7 +16,7 @@ import scala.annotation.tailrec
 object ConcreteMusic10 {
   val SYNTH_DIR = "/Users/danielstahl/Documents/Projects/soundmining-modular/src/main/sc/synths"
 
-  val patch = Part3Patch
+  val patch = Part5Patch
   var patchPlayback: PatchPlayback = PatchPlayback(patch = patch, client = client)
   val superColliderReceiver: SuperColliderReceiver = SuperColliderReceiver(patchPlayback)
 
@@ -502,6 +502,590 @@ object ConcreteMusic10 {
     }
   }
 
+  object Part6Patch {
+    def play(start: Double, reset: Boolean = true): Double = {
+      println(s"Part 6 start $start")
+      if (reset) client.resetClock()
+
+      var nextStart = start
+      nextStart = Part1Patch.playHarmonicVariant1(nextStart, randomRange(0.75, 1.0), 0)
+      nextStart = Part1Patch.playHarmonicVariant1(nextStart, randomRange(1.0, 1.25), 1)
+      nextStart
+    }
+  }
+
+  object Part5Patch extends Patch {
+
+    // Old order. Wood, metal, stone
+    val lowWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, LOW_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, LOW_SOUND), 0.10),
+        ((() => WOOD_SCRATCH_MIXES, LOW_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, LOW_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val lowMiddleWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, LOW_MIDDLE_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, LOW_MIDDLE_SOUND), 0.10),
+        ((() => WOOD_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, MIDDLE_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, MIDDLE_SOUND), 0.10),
+        ((() => WOOD_SCRATCH_MIXES, MIDDLE_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleHighWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.10),
+        ((() => WOOD_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val highWoodInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.6),
+        (() => randomRange(8, 13), 0.4))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.95),
+        (() => randomRange(0.25, 0.45), 0.05))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => WOOD_HIT_MIXES, HIGH_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, HIGH_SOUND), 0.10),
+        ((() => WOOD_SCRATCH_MIXES, HIGH_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, HIGH_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+
+    val lowStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.8),
+        (() => randomRange(0.60, 1.30), 0.2))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, LOW_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, LOW_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, LOW_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, LOW_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+
+    val lowMiddleStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.8),
+        (() => randomRange(0.60, 1.30), 0.2))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, LOW_MIDDLE_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, LOW_MIDDLE_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.8),
+        (() => randomRange(0.60, 1.30), 0.2))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, MIDDLE_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, MIDDLE_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, MIDDLE_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleHighStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.8),
+        (() => randomRange(0.60, 1.30), 0.2))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val highStoneInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.4),
+        (() => randomRange(8, 13), 0.6))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.8),
+        (() => randomRange(0.60, 1.30), 0.2))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => STONE_HIT_MIXES, HIGH_SOUND), 0.70),
+        ((() => METAL_HIT_MIXES, HIGH_SOUND), 0.10),
+        ((() => STONE_SCRATCH_MIXES, HIGH_SOUND), 0.15),
+        ((() => METAL_SCRATCH_MIXES, HIGH_SOUND), 0.05)
+      )),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val lowMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.8),
+        (() => randomRange(8, 13), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, LOW_SOUND), 0.80),
+        ((() => STONE_HIT_MIXES, LOW_SOUND), 0.05),
+        ((() => WOOD_HIT_MIXES, LOW_SOUND), 0.05),
+        ((() => METAL_SCRATCH_MIXES, LOW_SOUND), 0.05),
+        ((() => WOOD_SCRATCH_MIXES, LOW_SOUND), 0.025),
+        ((() => STONE_SCRATCH_MIXES, LOW_SOUND), 0.025))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val lowMiddleMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.8),
+        (() => randomRange(8, 13), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, LOW_MIDDLE_SOUND), 0.80),
+        ((() => STONE_HIT_MIXES, LOW_MIDDLE_SOUND), 0.05),
+        ((() => WOOD_HIT_MIXES, LOW_MIDDLE_SOUND), 0.05),
+        ((() => METAL_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.05),
+        ((() => WOOD_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.025),
+        ((() => STONE_SCRATCH_MIXES, LOW_MIDDLE_SOUND), 0.025))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.8),
+        (() => randomRange(8, 13), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, MIDDLE_SOUND), 0.80),
+        ((() => STONE_HIT_MIXES, MIDDLE_SOUND), 0.05),
+        ((() => WOOD_HIT_MIXES, MIDDLE_SOUND), 0.05),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_SOUND), 0.05),
+        ((() => WOOD_SCRATCH_MIXES, MIDDLE_SOUND), 0.025),
+        ((() => STONE_SCRATCH_MIXES, MIDDLE_SOUND), 0.025))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val middleHighMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.8),
+        (() => randomRange(8, 13), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.80),
+        ((() => STONE_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.05),
+        ((() => WOOD_HIT_MIXES, MIDDLE_HIGH_SOUND), 0.05),
+        ((() => METAL_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.05),
+        ((() => WOOD_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.025),
+        ((() => STONE_SCRATCH_MIXES, MIDDLE_HIGH_SOUND), 0.025))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    val highMetalInstrument = CloudInstrument(
+      totalLengthGenerator = WeightedRandom(Seq(
+        (() => randomRange(5, 8), 0.8),
+        (() => randomRange(8, 13), 0.2))),
+      timeGenerator = WeightedRandom(Seq(
+        (() => randomRange(0.03, 0.25), 0.80),
+        (() => randomRange(0.75, 1.25), 0.20))),
+      soundGenerator = WeightedRandom(Seq(
+        ((() => METAL_HIT_MIXES, HIGH_SOUND), 0.80),
+        ((() => STONE_HIT_MIXES, HIGH_SOUND), 0.05),
+        ((() => WOOD_HIT_MIXES, HIGH_SOUND), 0.05),
+        ((() => METAL_SCRATCH_MIXES, HIGH_SOUND), 0.05),
+        ((() => WOOD_SCRATCH_MIXES, HIGH_SOUND), 0.025),
+        ((() => STONE_SCRATCH_MIXES, HIGH_SOUND), 0.025))),
+      ampGenerator = (overallAmp, localTime) => overallAmp * (localTime * randomRange(0.3, 0.5) * 7))
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val amp = velocity / 127.0
+      val note = key % 12
+      val octave = (key / 12) - 1
+      // wood up metal down stone up metal down
+
+      octave match {
+        case 2 =>
+          note match {
+            case 0 => lowWoodInstrument.playCloud(start, amp)
+            case 1 => lowMiddleWoodInstrument.playCloud(start, amp)
+            case 2 => middleWoodInstrument.playCloud(start, amp)
+            case 3 => middleHighWoodInstrument.playCloud(start, amp)
+            case 4 => highWoodInstrument.playCloud(start, amp)
+          }
+        case 3 =>
+          note match {
+            case 0 => lowStoneInstrument.playCloud(start, amp)
+            case 1 => lowMiddleStoneInstrument.playCloud(start, amp)
+            case 2 => middleStoneInstrument.playCloud(start, amp)
+            case 3 => middleHighStoneInstrument.playCloud(start, amp)
+            case 4 => highStoneInstrument.playCloud(start, amp)
+          }
+        case 4 =>
+          note match {
+            case 0 => lowMetalInstrument.playCloud(start, amp)
+            case 1 => lowMiddleMetalInstrument.playCloud(start, amp)
+            case 2 => middleMetalInstrument.playCloud(start, amp)
+            case 3 => middleHighMetalInstrument.playCloud(start, amp)
+            case 4 => highMetalInstrument.playCloud(start, amp)
+          }
+      }
+    }
+
+    def play(start: Double, reset: Boolean = true): Double = {
+      if (reset) client.resetClock()
+
+      println(s"Part 5 start $start")
+
+      var time = start
+
+      var cloudLen = lowWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = lowMiddleWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowMiddleWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleHighWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleHighWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = highWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = highWoodInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+
+      cloudLen = highMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = highMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleHighMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleHighMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = lowMiddleMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowMiddleMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = lowMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowMetalInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+
+      cloudLen = lowStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = lowMiddleStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = lowMiddleStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = middleHighStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = middleHighStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      cloudLen = highStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+      cloudLen = highStoneInstrument.playCloud(time, randomRange(0.2, 0.8))
+      time = time + (cloudLen * randomRange(0.66, 0.8))
+
+      time
+    }
+  }
+
+  sealed trait DurationType
+  object SHORT_DURATION extends DurationType
+  object MIDDLE_DURATION extends DurationType
+  object LONG_DURATION extends DurationType
+
+  object Part4Patch extends Patch {
+    val durationTypeChooser = WeightedRandom(Seq(
+      (MIDDLE_DURATION, 0.6),
+      (LONG_DURATION, 0.4)))
+
+    // C CISS (D?) Diss
+    // Aiss Giss fiss
+    // c aiss, ciss giss, diss fiss, d g
+
+    // LOW_SOUND 1, LOW_SOUND head, MIDDLE_SOUND head, HIGH_SOUND head
+    val variants = WoodHit1HarmonicVariants.variants
+
+    override def noteHandle(start: Double, key: Int, velocity: Int, device: String): Unit = {
+      val amp = velocity / 127.0
+      val note = key % 12
+      val octave = (key / 12) - 1
+
+      device match {
+        case "PAD:nanoPAD2" =>
+          key match {
+            case 36 =>
+            case _ =>
+          }
+        case "KEYBOARD:microKEY2" =>
+          val variant = octave match {
+            case 2 =>
+              variants(LOW_SOUND).head
+            case 3 =>
+              variants(LOW_SOUND)(1)
+            case 4 =>
+              variants(MIDDLE_SOUND).head
+            case 5 =>
+              variants(HIGH_SOUND).head
+          }
+
+          val attackTime = randomRange(0.33, 0.66)
+          val duration = durationTypeChooser.choose() match {
+            case MIDDLE_DURATION => randomRange(5, 8)
+            case LONG_DURATION => randomRange(13, 21)
+          }
+
+          variant(start, note, amp, attackTime, duration, randomRange(-0.8, 0.8))
+      }
+    }
+
+    def play(start: Double, reset: Boolean = true): Double = {
+      if (reset) client.resetClock()
+
+      println(s"Part 4 start $start")
+
+      var timeLower = start
+      0 until 3 foreach {
+        _ =>
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 0)
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 1)
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 3)
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 2)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeLower = playHarmonicVariant2(timeLower, randomRange(0.5, 0.75), 0)
+          timeLower = playHarmonicVariant2(timeLower, randomRange(0.5, 0.75), 1)
+          timeLower = playHarmonicVariant2(timeLower, randomRange(0.5, 0.75), 3)
+          timeLower = playHarmonicVariant2(timeLower, randomRange(0.5, 0.75), 2)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeLower = playHarmonicVariant3(timeLower, randomRange(0.5, 0.75), 0)
+          timeLower = playHarmonicVariant3(timeLower, randomRange(0.5, 0.75), 1)
+          timeLower = playHarmonicVariant3(timeLower, randomRange(0.5, 0.75), 3)
+          timeLower = playHarmonicVariant3(timeLower, randomRange(0.5, 0.75), 2)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeLower = playHarmonicVariant4(timeLower, randomRange(0.5, 0.75), 0)
+          timeLower = playHarmonicVariant4(timeLower, randomRange(0.5, 0.75), 1)
+          timeLower = playHarmonicVariant4(timeLower, randomRange(0.5, 0.75), 3)
+          timeLower = playHarmonicVariant4(timeLower, randomRange(0.5, 0.75), 2)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 0)
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 1)
+          timeLower = playHarmonicVariant1(timeLower, randomRange(0.5, 0.75), 3)
+          timeLower = playHarmonicVariant1(timeLower, 1.0, 2)
+      }
+      var timeUpper = start + randomRange(2, 3)
+      0 until 3 foreach {
+        _ =>
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 10)
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 8)
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 6)
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 7)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeUpper = playHarmonicVariant2(timeUpper, randomRange(0.5, 0.75), 10)
+          timeUpper = playHarmonicVariant2(timeUpper, randomRange(0.5, 0.75), 8)
+          timeUpper = playHarmonicVariant2(timeUpper, randomRange(0.5, 0.75), 6)
+          timeUpper = playHarmonicVariant2(timeUpper, randomRange(0.5, 0.75), 7)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeUpper = playHarmonicVariant3(timeUpper, randomRange(0.5, 0.75), 10)
+          timeUpper = playHarmonicVariant3(timeUpper, randomRange(0.5, 0.75), 8)
+          timeUpper = playHarmonicVariant3(timeUpper, randomRange(0.5, 0.75), 6)
+          timeUpper = playHarmonicVariant3(timeUpper, randomRange(0.5, 0.75), 7)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeUpper = playHarmonicVariant4(timeUpper, randomRange(0.5, 0.75), 10)
+          timeUpper = playHarmonicVariant4(timeUpper, randomRange(0.5, 0.75), 8)
+          timeUpper = playHarmonicVariant4(timeUpper, randomRange(0.5, 0.75), 6)
+          timeUpper = playHarmonicVariant4(timeUpper, randomRange(0.5, 0.75), 7)
+      }
+      0 until 3 foreach {
+        _ =>
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 10)
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 8)
+          timeUpper = playHarmonicVariant1(timeUpper, randomRange(0.5, 0.75), 6)
+          timeUpper = playHarmonicVariant1(timeUpper, 1.0, 7)
+      }
+      math.max(timeLower, timeUpper)
+    }
+
+    def playHarmonicVariant1(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(LOW_SOUND)(1)
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.9, 0.9)
+      val attackTime = randomRange(0.33, 0.66)
+      val duration = durationTypeChooser.choose() match {
+        case MIDDLE_DURATION => randomRange(5, 8)
+        case LONG_DURATION => randomRange(13, 21)
+      }
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        attackTime, // peak
+        duration, //duration
+        pan) // pan
+
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant2(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(MIDDLE_SOUND).head
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.9, 0.9)
+      val attackTime = randomRange(0.33, 0.66)
+      val duration = durationTypeChooser.choose() match {
+        case MIDDLE_DURATION => randomRange(5, 8)
+        case LONG_DURATION => randomRange(13, 21)
+      }
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        attackTime, // peak
+        duration, //duration
+        pan) // pan
+
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant3(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(HIGH_SOUND).head
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.9, 0.9)
+      val attackTime = randomRange(0.33, 0.66)
+      val duration = durationTypeChooser.choose() match {
+        case MIDDLE_DURATION => randomRange(5, 8)
+        case LONG_DURATION => randomRange(13, 21)
+      }
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        attackTime, // peak
+        duration, //duration
+        pan) // pan
+
+      start + (duration * nextStartFactor)
+    }
+
+    def playHarmonicVariant4(start: Double, nextStartFactor: Double, note: Int): Double = {
+      println(s"Harmonic variant 1 $start note $note")
+      val harmonicVariant = WoodHit1HarmonicVariants.variants(LOW_SOUND).head
+      val amp = randomRange(0.2, 0.8)
+      val pan = randomRange(-0.9, 0.9)
+      val attackTime = randomRange(0.33, 0.66)
+      val duration = durationTypeChooser.choose() match {
+        case MIDDLE_DURATION => randomRange(5, 8)
+        case LONG_DURATION => randomRange(13, 21)
+      }
+      harmonicVariant(
+        start, // start
+        note,
+        amp, // amp
+        attackTime, // peak
+        duration, //duration
+        pan) // pan
+
+      start + (duration * nextStartFactor)
+    }
+  }
+
   object Part3Patch extends Patch {
 
     val lowStoneInstrument = CloudInstrument(
@@ -551,7 +1135,7 @@ object ConcreteMusic10 {
     def play(start: Double, reset: Boolean = true): Double = {
       if (reset) client.resetClock()
 
-      println(s"Part 2 start $start")
+      println(s"Part 3 start $start")
 
       var time = start
       0 until 8 foreach {
@@ -722,12 +1306,11 @@ object ConcreteMusic10 {
           val cloudLen = middleHighMetalInstrument.playCloud(time, overallAmp)
           time = time + (cloudLen * randomRange(1.25, 1.5))
       }
-      0 until 2 foreach {
-        _ =>
-          val overallAmp = randomRange(0.2, 0.8)
-          val cloudLen = middleMetalInstrument.playCloud(time, overallAmp)
-          time = time + (cloudLen * randomRange(1.75, 2.0))
-      }
+
+      val overallAmp = randomRange(0.2, 0.8)
+      val cloudLen = middleMetalInstrument.playCloud(time, overallAmp)
+      time = time + (cloudLen * randomRange(1.75, 2.0))
+
 
       var nextStart = start + randomRange(21, 34)
       nextStart = playHarmonicVariant1(nextStart, randomRange(0.5, 0.75), 0)
@@ -755,7 +1338,8 @@ object ConcreteMusic10 {
       nextStart = playHarmonicVariant2(nextStart, randomRange(0.5, 0.75), 4)
       nextStart = playHarmonicVariant2(nextStart, randomRange(1.25, 1.50), 1)
 
-      nextStart = nextStart + randomRange(8, 13)
+      //nextStart = nextStart + randomRange(8, 13)
+      nextStart = nextStart + randomRange(13, 21)
       Part3Patch.middleStoneInstrument.playCloud(nextStart, randomRange(0.2, 0.8))
 
       println(s"Part 2 dust time $time harmony time $nextStart")
@@ -953,11 +1537,17 @@ object ConcreteMusic10 {
   def playAllParts(start: Double = 0, reset: Boolean = true): Unit = {
     if(reset) client.resetClock()
 
-    val part1Time = Part1Patch.play(start, reset = false)
-    val part2start = part1Time + randomRange(5, 8)
-    val part2Time = Part2Patch.play(part2start, reset = false)
-    val part3start = part2Time + randomRange(5, 8)
-    Part3Patch.play(part3start, reset = false)
+    val part1time = Part1Patch.play(start, reset = false)
+    val part2start = part1time + randomRange(5, 8)
+    val part2time = Part2Patch.play(part2start, reset = false)
+    val part3start = part2time + randomRange(5, 8)
+    val part3time = Part3Patch.play(part3start, reset = false)
+    val part4start = part3time + randomRange(5, 8)
+    val part4time = Part4Patch.play(part4start, reset = false)
+    val part5start = part4time + randomRange(5, 8)
+    val part5time = Part5Patch.play(part5start, reset = false)
+    val part6start = part5time + randomRange(5, 8)
+    Part6Patch.play(part6start, reset = false)
   }
 
   def init(): Unit = {

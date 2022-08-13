@@ -138,7 +138,6 @@ object WoodHitSound {
     val variants: Map[SoundVariant, Seq[(Double, Int, Double, Double, Double, Double) => Unit]] = Map(
       LOW_SOUND -> Seq(
         (start, note, amp, attackTime, duration, pan) => {
-          println(s"spectrum $LOWEST_SPECTRUM")
           synthPlayer()
             .pulse(staticControl(LOWEST_SPECTRUM(note)), relativePercControl(0.0001, amp, attackTime, Left(Seq(0, 0))))
             .ring(staticControl(LOWEST_SPECTRUM(note + 2)))
@@ -157,7 +156,6 @@ object WoodHitSound {
       ),
       MIDDLE_SOUND -> Seq(
         (start, note, amp, attackTime, duration, pan) => {
-          println(s"spectrum $MIDDLE_SPECTRUM")
           synthPlayer()
             .triangle(staticControl(MIDDLE_SPECTRUM(note)), relativePercControl(0.0001, amp, attackTime, Left(Seq(0, 0))))
             .ring(staticControl(MIDDLE_SPECTRUM(note + 0)))
@@ -168,7 +166,6 @@ object WoodHitSound {
       ),
       HIGH_SOUND -> Seq(
         (start, note, amp, attackTime, duration, pan) => {
-          println(s"spectrum $HIGH_SPECTRUM")
           synthPlayer()
             .saw(staticControl(HIGH_SPECTRUM(note)), relativePercControl(0.0001, amp, attackTime, Left(Seq(0, 0))))
             .ring(staticControl(HIGH_SPECTRUM(note + 3)))
