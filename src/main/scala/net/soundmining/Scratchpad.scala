@@ -26,7 +26,7 @@ object Scratchpad {
 
   implicit val client: SuperColliderClient = SuperColliderClient()
   val SYNTH_DIR = "/Users/danielstahl/Documents/Projects/soundmining-modular/src/main/sc/synths"
-  val synthPlayer = SynthPlayer(soundPlays = Map.empty, numberOfOutputBuses = 2)
+  val synthPlayer = SynthPlayer(soundPlays = Map.empty, numberOfOutputBuses = 2, bufferedPlayback = false)
   val patchChooser = PatchChooser()
   var patchPlayback: PatchPlayback = PatchPlayback(patch = patchChooser, client = client)
   val superColliderReceiver: SuperColliderReceiver = SuperColliderReceiver(patchPlayback)

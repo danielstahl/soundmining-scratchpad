@@ -14,9 +14,9 @@ libraryDependencies += "net.soundmining" %% "soundmining-modular" % "1.0-SNAPSHO
 
 console / initialCommands := """
     |import net.soundmining._
-    |ConcreteMusic10.init()
+    |Scratchpad.init()
 """.trim().stripMargin
 
 console / cleanupCommands += """
-    ConcreteMusic10.stop()
+    Scratchpad.stop()
 """
